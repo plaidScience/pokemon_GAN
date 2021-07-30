@@ -5,10 +5,12 @@ class _Base_Model_Class():
     def __init__(self, output_dir, name='model', **model_args):
         self.output_dir = output_dir
         self.name = name
-        self.model = _build_model(**model_args)
-        self.optimizer = _build_optimizer()
-        self.loss = _build_loss()
+        self.model = self._build_model(**model_args)
+        self.optimizer = self._build_optimizer()
+        self.loss = self._build_loss()
         self.logger = tf.summary.create_file_writer(os.path.join(self.output_dir, 'logs/', '{}/'.format(self.name)))
+    def __call__(input, **kwargs):
+        return model(input, **kwargs)
     def save_model():
         self.model.save(os.path.join(self.output_dir, 'saved_models', '{}/'.format(self.name)))
     def load_model(save_folder, name=None):
