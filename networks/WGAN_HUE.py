@@ -1,3 +1,7 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+
 import io
 import os, sys
 sys.path.append(os.path.abspath("."))
@@ -11,7 +15,7 @@ from networks.BASE_MODEL_CLASS import _Base_Model_Class
 
 class Generator(_Base_Model_Class):
     def __init__(self, input_shape, output_shape, output_dir):
-        super(Generator, self).__init__(output_dir, name='gen', output_shape)
+        super(Generator, self).__init__(output_dir, name='gen', input_shape = input_shape, output_shape=output_shape)
     def _build_model(self, input_shape=(100), output_shape=(28, 28, 1)):
         model = tf.keras.Sequential()
         #if the length of the input shape is greater than 1
@@ -35,7 +39,7 @@ class Generator(_Base_Model_Class):
             model.add(tf.keras.layers.Flatten())
             model.add(tf.keras.layers.Dense(output_shape[-1]*output_shape[-2]*output_shape[-3]*16, use_bias=False))
         else:
-            model.add(tf.keras.layers.Dense(output_shape[-1]*output_shape[-2]*output_shape[-3]*16, use_bias=False, input_shape=(input_shape[-1]))
+            model.add(tf.keras.layers.Dense(output_shape[-1]*output_shape[-2]*output_shape[-3]*16, use_bias=False, input_shape=(input_shape[-1])))
 
         model.add(tf.keras.layers.BatchNormalization())
         model.add(tf.keras.layers.LeakyReLU())
@@ -64,7 +68,7 @@ class Generator(_Base_Model_Class):
 
 class Critic(_Base_Model_Class):
     def __init__(self, input_shape, output_dir):
-        super(Critic, self).__init__(output_dir, name='critic', input_shape)
+        super(Critic, self).__init__(output_dir, name='critic', input_shape=input_shape)
     def _build_model(self, input_shape=(28, 28, 1)):
         model = tf.keras.Sequential()
 
@@ -90,16 +94,18 @@ class Critic(_Base_Model_Class):
         return tf.keras.losses.Mean()
 
 
-class HueWGAN:
-    def __init__(self, input_shape, output_dir):
+class PokeWGAN:
+    def __init__(self, input_shape, output_shape, output_dir):
+        self.input_shape, self.output_shape = input_shape, output_shape
+
         self.birthday =_dt.now().strftime("%m_%d/%H")
         self.output_dir = os.path.join(output_dir, self.birthday)
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
 
-        self.generator = self._build_generator(input_shape)
+        self.generator = self._build_generator(self.input_shape, self.output_shape)
         self.generator.summary()
-        self.critic = self._build_critic(input_shape)
+        self.critic = self._build_critic(self.output_shape)
         self.critic.summary()
 
         self.checkpoint_folder = os.path.join(self.output_dir, 'checkpoints')
@@ -110,9 +116,20 @@ class HueWGAN:
             g_opt = self.generator.optimizer,
             d_opt = self.critic.optimizer
         )
-        self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, os.path.join(self.checkpoint_folder, 'checkpoint') max_to_keep=5)
+        self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, os.path.join(self.checkpoint_folder, 'checkpoint'), max_to_keep=5)
 
-    def _build_generator(self, shape):
-        return Generator(shape, self.output_dir)
-    def _build_critic(self, shape):
-        return Critic(shape, self.output_dir)
+    def _build_generator(self, input_shape, output_shape):
+        return Generator(input_shape, output_shape, self.output_dir)
+    def _build_critic(self, input_shape):
+        return Critic(input_shape, self.output_dir)
+
+    def _train_step(self, images):
+        if len(self.input_shape) == 1:
+            g_input = tf.random.normal([self.global_batch_size, self.input_shape[-1]])
+        return g_loss, c_loss
+
+def main():
+    pokeGAN = PokeWGAN((100,), (40, 30, 3), './OUTPUT/pokeGAN/')
+
+if __name__ == '__main__':
+    main()
