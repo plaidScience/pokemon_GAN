@@ -9,8 +9,8 @@ class _Base_Model_Class():
         self.optimizer = self._build_optimizer()
         self.loss = self._build_loss()
         self.logger = tf.summary.create_file_writer(os.path.join(self.output_dir, 'logs/', '{}/'.format(self.name)))
-    def __call__(input, **kwargs):
-        return model(input, **kwargs)
+    def __call__(self, input, **kwargs):
+        return self.model(input, **kwargs)
     def save_model():
         self.model.save(os.path.join(self.output_dir, 'saved_models', '{}/'.format(self.name)))
     def load_model(save_folder, name=None):
