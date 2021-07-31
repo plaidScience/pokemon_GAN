@@ -189,6 +189,7 @@ class PokeWGAN:
         return gen_loss, critic_loss
 
     def train(self, img_ds, epochs, start_epoch = 0, generate_freq=1, checkpoint_freq=10):
+        log_set = next(iter(img_ds))
         critic_loss = tf.keras.metrics.Mean("critic_loss", dtype=tf.float32)
         gen_loss = tf.keras.metrics.Mean("generator_loss", dtype=tf.float32)
         j = None
@@ -226,9 +227,13 @@ class PokeWGAN:
             ))
             if ((epoch+1) % generate_freq) == 0:
                 self.generate_and_log_imgs(epoch)
-                for img_batch in img_ds:
-                    self._log_imgs(img_batch, epoch, 'Base')
-                    break
+                self._log_imgs(log_set, epoch, 'Base')
+            with self.generator.logger.as_default():
+                tf.summary.scalar('generator_loss', gen_loss.result(), step=epoch)
+            with self.critic.logger.as_default():
+                tf.summary.scalar('critic_loss', critic_loss.result(), step=epoch)
+            gen_loss.reset_states()
+            critic_loss.reset_states()
     def generate_and_log_imgs(self, epoch):
         predictions = self.generator(self.seed, training=False)
         self._log_imgs(predictions, epoch, 'Prediction')
