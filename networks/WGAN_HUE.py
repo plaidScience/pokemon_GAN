@@ -234,6 +234,7 @@ class PokeWGAN:
                 tf.summary.scalar('critic_loss', critic_loss.result(), step=epoch)
             gen_loss.reset_states()
             critic_loss.reset_states()
+        self.save_models()
     def generate_and_log_imgs(self, epoch):
         predictions = self.generator(self.seed, training=False)
         self._log_imgs(predictions, epoch, 'Prediction')
@@ -259,6 +260,9 @@ class PokeWGAN:
                 "Epoch {} Image (concatenated)".format(log_str),
                 image, max_outputs=self.n_preds*self.m_preds, step=epoch
             )
+    def save_models(self):
+        self.critic.save()
+        self.generator.save()
 def main():
     pokeGAN = PokeWGAN((100,), (68, 56, 3), './OUTPUT/pokeGAN/')
 
