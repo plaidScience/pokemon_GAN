@@ -54,3 +54,4 @@ Thumbs.db
 logs
 .env
 OUTPUT
+cached_datasets
