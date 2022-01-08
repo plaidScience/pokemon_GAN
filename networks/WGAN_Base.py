@@ -18,7 +18,7 @@ from .Model_Generator import GENERATOR
 
 
 class PokeWGAN:
-    def __init__(self, noise_dim, image_shape, output_dir):
+    def __init__(self, noise_dim, image_shape, output_dir, log_tiling = (4, 4)):
         self.noise_dim = noise_dim
         self.image_shape = image_shape
 
@@ -45,7 +45,7 @@ class PokeWGAN:
             d_opt = self.critic.optimizer
         )
         self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, os.path.join(self.checkpoint_folder, 'checkpoint'), max_to_keep=5)
-        self.n_preds, self.m_preds = 4, 4
+        self.n_preds, self.m_preds = log_tiling
         self.seed = tf.random.normal([self.n_preds*self.m_preds, self.noise_dim])
 
     def _build_generator(self, input_shape, output_shape):
@@ -109,7 +109,7 @@ class PokeWGAN:
         for epoch in range(start_epoch, epochs):
             start = time.time()
             localtime = time.localtime(start)
-            print('Epoch {:04d} started at {}:{:02d}:{:02d} ({:.02f}% done)'
+            print('Epoch {:04d} started at {}:{:02d}:{:02d}'
                   .format(epoch+1, localtime[3], localtime[4], localtime[5], 0),
                   end="\r", flush=True
                  )
@@ -121,10 +121,11 @@ class PokeWGAN:
                 )
                 if gen_loss_batch is not None: gen_loss(gen_loss_batch)
                 critic_loss(critic_loss_batch)
+                last_batch=i
 
             if ((epoch+1) % checkpoint_freq) == 0:
                 self.checkpoint_manager.save()
-            print('Time for Epoch {:04d} is {:.0f} seconds                '.format(epoch+1, time.time()-start))
+            print('Time for Epoch {:04d} is {:.0f} seconds (Total {} batches completed)                '.format(epoch+1, time.time()-start, last_batch))
             print('\tGenerator Loss: {}\n\tDiscriminator Loss: {}'.format(
                     gen_loss.result(),
                     critic_loss.result()
