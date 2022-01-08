@@ -144,11 +144,16 @@ class PokeWGAN:
         predictions = self.generator(self.seed, training=False)
         self._log_imgs(predictions, epoch, 'Prediction')
     def _log_imgs(self, images, epoch, log_str=''):
-        fig = plt.figure(figsize=(self.n_preds, self.m_preds))
-        for i in range(self.n_preds*self.m_preds):
-            plt.subplot(self.n_preds, self.m_preds, i+1)
-            plt.imshow((images[i, :, :, :]*127.5 + 127.5).numpy().astype(np.uint8))
-            plt.axis('off')
+        dpi = 100.
+        w_pad = 2/72.
+        h_pad = 2/72.
+        plot_width = (self.image_shape[-3]+2*w_pad*self.image_shape[-3])/dpi
+        plot_height = (self.image_shape[-2]+2*h_pad*self.image_shape[-2])/dpi
+        fig, ax = plt.subplots(self.n_preds, self.m_preds, figsize=(plot_width*(self.m_preds+1), plot_height*(self.n_preds+1)), dpi=dpi)
+        for i in range(self.n_preds):
+            for j in range(self.m_preds):
+                ax[i, j].imshow((images[i*self.m_preds+j, :, :, :].numpy()*0.5 + 0.5))
+                ax[i, j].axis('off')
         buf = io.BytesIO()
         plt.savefig(buf, format='png')
         plt.close(fig)
@@ -159,7 +164,7 @@ class PokeWGAN:
         with self.generator.logger.as_default():
             tf.summary.image(
                 "Epoch{} Images".format(log_str),
-                images, max_outputs=self.n_preds*self.m_preds, step=epoch
+                images*0.5+0.5, max_outputs=self.n_preds*self.m_preds, step=epoch
             )
             tf.summary.image(
                 "Epoch {} Image (concatenated)".format(log_str),
