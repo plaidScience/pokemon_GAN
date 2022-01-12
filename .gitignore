@@ -55,3 +55,4 @@ logs
 .env
 OUTPUT
 cached_datasets
+jupyter-notebooks

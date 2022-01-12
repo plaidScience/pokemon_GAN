@@ -46,7 +46,7 @@ class PokeWGAN:
         )
         self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, os.path.join(self.checkpoint_folder, 'checkpoint'), max_to_keep=5)
         self.n_preds, self.m_preds = log_tiling
-        self.seed = tf.random.normal(tf.concat([[self.n_preds*self.m_preds], self.noise_dim]), axis=0)
+        self.seed = tf.random.normal(tf.concat([[self.n_preds*self.m_preds], self.noise_dim], axis=0))
 
     def _build_generator(self, input_shape, output_shape):
         return GENERATOR(input_shape, output_shape, self.output_dir)
@@ -65,7 +65,7 @@ class PokeWGAN:
         return d_regularizer
 
     def _train_step_critic(self, images):
-        g_input = tf.random.normal([images.shape[0], self.noise_dim])
+        g_input = tf.random.normal(tf.concat([[images.shape[0]], self.noise_dim], axis=0))
         with tf.GradientTape() as critic_tape:
             generated = self.generator(g_input, training=True)
 
@@ -81,7 +81,7 @@ class PokeWGAN:
         return critic_loss
 
     def _train_step_generator(self, batch_size):
-        g_input = tf.random.normal(tf.concat([[batch_size], self.noise_dim]), axis=0)
+        g_input = tf.random.normal(tf.concat([[batch_size], self.noise_dim], axis=0))
         with tf.GradientTape() as generator_tape:
             generated = self.generator(g_input, training=True)
 
@@ -95,7 +95,6 @@ class PokeWGAN:
         return gen_loss
 
     def _train_step(self, images, batch, train_g_every=5):
-        g_input = tf.random.normal([images.shape[0], self.noise_dim])
         
         critic_loss = self._train_step_critic(images)
         gen_loss = self._train_step_generator(images.shape[0]) if batch%train_g_every == 0 else -1
