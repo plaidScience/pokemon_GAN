@@ -52,7 +52,7 @@ class GENERATOR(MODEL):
         act_5 = tf.keras.layers.ReLU()(norm_5)
 
         padded_2 = tf.keras.layers.ZeroPadding2D(3)(act_5)
-        conv_2 = tf.keras.layers.Conv2D(3, (7,7), strides=1, padding='valid')(padded_2)
+        conv_2 = tf.keras.layers.Conv2D(output_shape[-1], (7,7), strides=1, padding='valid')(padded_2)
         norm_6 = InstanceNormalization()(conv_2)
         outp = tf.keras.layers.Activation('tanh')(norm_6)
 

@@ -10,7 +10,7 @@ img_ds = get_pokemon_images(img_dir, (56, 68, 4), True, (48, 48), True, False, T
 shiny_dir = "D:\\pokesprite\\pokemon-gen7x\\shiny\\"
 shiny_ds = get_pokemon_images(shiny_dir, (56, 68, 4), True, (48, 48), True, False, True).unbatch()
 
-wgan = WGAN.PokeWGAN(100, (48, 48, 3), './OUTPUT/pokeGAN_color/')
+wgan = WGAN.PokeWGAN((100), (48, 48, 3), './OUTPUT/pokeGAN_color/')
 cache_dir = os.path.join('./cached_datasets/pokeGAN_color/', '{}/'.format(wgan.birthday))
 if not os.path.exists(cache_dir):
     os.makedirs(cache_dir)
