@@ -5,15 +5,15 @@ from .NN_Layers import InstanceNormalization, DownsampleBlock
 
 class CRITIC(MODEL):
 # critic adapted from starGAN
-    def __init__(self, input_shape, output_dir, max_filters=2048, lr=0.0001, name='critic'):
+    def __init__(self, input_shape, output_dir, max_filters=2048, up_to_max=True, lr=0.0001, name='critic'):
         super(CRITIC, self).__init__(
             output_dir,
             name=name,
-            model_args={'input_shape':input_shape, 'max_filters':max_filters},
+            model_args={'input_shape':input_shape, 'max_filters':max_filters, 'up_to_max':up_to_max},
             optimizer_args={'lr':lr, 'beta_1':0.5, 'beta_2':0.999}
         )
 
-    def _build_model(self, input_shape=[None, None, 3], max_filters=2048):
+    def _build_model(self, input_shape=[None, None, 3], max_filters=2048, up_to_max=True):
 
         norm_type='none'
 
@@ -32,6 +32,11 @@ class CRITIC(MODEL):
 
             w = w//2
             h = h//2
+            filters = filters*2
+        
+        while (filters <= max_filters and up_to_max==True):
+            x = tf.keras.layers.Conv2D(filters, (4,4), strides=1, padding='same')(x)
+            x= tf.keras.layers.LeakyReLU()(x)
             filters = filters*2
 
         x1=tf.keras.layers.ZeroPadding2D(1)(x)
