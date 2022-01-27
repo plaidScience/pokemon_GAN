@@ -112,8 +112,8 @@ class PokeWGAN:
             generated = self.generator([bw_imgs, target_hues], training=True)
             fake_output = self.critic(generated, training=True)
 
-            hue_bw, hue_rec = self._get_hue_bw(generated)
-            hue_err = self.hue_loss(rand_hue, hue_rec)*self.LAMBDA_HUE
+            hue_gen, hue_bw = self._get_hue_bw(generated)
+            hue_err = self.hue_loss(rand_hue, hue_gen)*self.LAMBDA_HUE
 
             rec_img = self.generator([hue_bw, avg_hues], training=True)
 
