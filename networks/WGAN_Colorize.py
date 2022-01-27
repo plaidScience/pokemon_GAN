@@ -46,9 +46,8 @@ class PokeWGAN:
         self.critic.summary()
 
         self.LAMBDA_GP=10
-        self.LAMBDA_BW = 7.5
-        self.LAMBDA_REC = 7.5
-        self.LAMBDA_HUE = 10
+        self.LAMBDA_REC = 10
+        self.LAMBDA_HUE = 1
         self.train_g_every = 5
 
         self.plot_scaling = plot_scaling
@@ -64,7 +63,7 @@ class PokeWGAN:
         )
         self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, os.path.join(self.checkpoint_folder, 'checkpoint'), max_to_keep=5)
         self.n_preds, self.m_preds= log_tiling
-        self.seed = tf.random.uniform([self.n_preds*self.m_preds, 1], 0.0, 1.0)
+        self.seed = tf.random.uniform([self.n_preds*self.m_preds], 0.0, 1.0)
 
     def _build_generator(self, image_shape):
         return GENERATOR(image_shape[:-1], 1+(image_shape[-1]-3), image_shape[-1], self.output_dir, 1)
@@ -113,10 +112,10 @@ class PokeWGAN:
             generated = self.generator([bw_imgs, target_hues], training=True)
             fake_output = self.critic(generated, training=True)
 
-            _, hue_rec = self._get_hue_bw(generated)
+            hue_bw, hue_rec = self._get_hue_bw(generated)
             hue_err = self.hue_loss(rand_hue, hue_rec)*self.LAMBDA_HUE
 
-            rec_img = self.generator([bw_imgs, avg_hues], training=True)
+            rec_img = self.generator([hue_bw, avg_hues], training=True)
 
             rec_err = self.rec_loss(images, rec_img)*self.LAMBDA_REC
 
@@ -137,15 +136,16 @@ class PokeWGAN:
         return gen_loss, critic_loss
 
     def hue_loss (self, hue_real, hue_pred):
-        return tf.reduce_mean(img_functions.tf_angDist(hue_real, hue_pred, 1.0))
+        return tf.reduce_mean(tf.math.square(img_functions.tf_angDist(hue_real, hue_pred, 1.0)))
     
     def rec_loss (self, real_img, fake_img):
-        return tf.reduce_mean(tf.abs(real_img, fake_img))
+        return tf.reduce_mean(tf.abs(tf.subtract(real_img, fake_img)))
 
     def train(self, img_ds, epochs, start_epoch = 0, generate_freq=1, checkpoint_freq=10):
         ds_iter = iter(img_ds)
         log_set = next(ds_iter)
         log_hues = img_functions.get_avg_hue(log_set)
+        seed_hues = tf.random.shuffle(log_hues)
         if log_set.shape[0] < self.n_preds*self.m_preds:
             raise(ValueError('Batch Size of Set to Log Too Small'))
         else:
@@ -177,7 +177,7 @@ class PokeWGAN:
                     critic_loss.result()
             ))
             if ((epoch+1) % generate_freq) == 0:
-                self.generate_and_log_imgs(log_set, epoch)
+                self.generate_and_log_imgs(log_set, epoch, seed=seed_hues)
                 self._log_imgs(log_set, log_hues, epoch, f'Base')
             with self.generator.logger.as_default():
                 tf.summary.scalar('loss', gen_loss.result(), step=epoch)
@@ -193,7 +193,7 @@ class PokeWGAN:
         if seed is None:
             seed = self.seed
         predictions = self.generator([bw_img, seed], training=False)
-        self._log_imgs(predictions, seed[:, 0], epoch, f'Prediction', do_err=True)
+        self._log_imgs(predictions, seed, epoch, f'Prediction', do_err=True)
     def _log_imgs(self, images, labels, epoch, log_str='', do_err = False):
         dpi = 100.
         w_pad = 2/72.
