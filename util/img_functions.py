@@ -1,5 +1,7 @@
 import tensorflow as tf
-def get_avg_hue(img):
+def get_avg_hue(img, denormalize=True):
+    if denormalize:
+        img = (img*0.5)+0.5
     avg_rgb = tf.reduce_mean(img, axis=[-3, -2])
     avg_hsv = tf.image.rgb_to_hsv(avg_rgb)
     avg_hue = avg_hsv[:, -3]
