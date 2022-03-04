@@ -16,6 +16,10 @@ The WGAN_Colorize network is an iteration on the base model, but instead of gene
 -  a Hue Loss, which takes the Mean Square Error between the average hue of the image and the desired hue given to the generator, accounting for the fact that hues are cyclical and 1.0 is essentially the same as 0.0
 - a Reconstructive Loss, which takes the Mean Absolute Error between the image and the reconstruction of the image, after the Black and White image is given to the Generator with the base image's average hue
 
+### __WGAN\_Recolor__
+
+This network is an iteration upon colorize, where instead of the network attempting to colorize a black and white image, the network instead recolors a full-color image, using the existing colors as a guide
+
 
 ## Datasets Used
 
