@@ -6,7 +6,7 @@ from tensorflow.python.keras.engine import training
 #
 
 
-@tf.keras.utils.register_keras_serializable(package='CG_Layers', name=None)
+@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name=None)
 class DownsampleBlock(tf.keras.layers.Layer):
 #downsample block layer, implemented from https://github.com/tensorflow/examples/blob/master/tensorflow_examples/models/pix2pix/pix2pix.py
     def __init__(self, filters, kernel_size, norm_type='batchnorm', apply_norm=True, **kwargs):
@@ -53,7 +53,7 @@ def DownsampleStack(inp, filters, size, norm_type='batchnorm', apply_norm=True):
         leaky_relu = tf.keras.layers.LeakyReLU()(norm)
         return leaky_relu
 
-@tf.keras.utils.register_keras_serializable(package='CG_Layers', name=None)
+@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name=None)
 #upsample block layer, implemented from https://github.com/tensorflow/examples/blob/master/tensorflow_examples/models/pix2pix/pix2pix.py
 class UpsampleBlock(tf.keras.layers.Layer):
     def __init__(self, filters, kernel_size, norm_type = 'batchnorm', apply_dropout=False, **kwargs):
@@ -107,7 +107,7 @@ def UpsampleStack(inp, filters, size, norm_type = 'batchnorm', apply_dropout=Fal
         act = tf.keras.layers.ReLU()(dropout)
         return act
 
-@tf.keras.utils.register_keras_serializable(package='CG_Layers', name=None)
+@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name=None)
 class ResnetBlock(tf.keras.layers.Layer):
 # resnetBlock, inspired from https://machinelearningmastery.com/how-to-develop-cyclegan-models-from-scratch-with-keras/
     def __init__(self, filters, norm_type='instancenorm', **kwargs):
@@ -171,7 +171,7 @@ def ResnetStack(inp, filters, norm_type='instancenorm'):
 
     return concat
 
-@tf.keras.utils.register_keras_serializable(package='CG_Layers', name=None)
+@tf.keras.utils.register_keras_serializable(package='Custom_Layers', name=None)
 #instance norm layer, implemented from https://github.com/tensorflow/examples/blob/master/tensorflow_examples/models/pix2pix/pix2pix.py
 class InstanceNormalization(tf.keras.layers.Layer):
     """Instance Normalization Layer (https://arxiv.org/abs/1607.08022)."""

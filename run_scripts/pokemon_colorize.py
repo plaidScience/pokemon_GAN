@@ -19,7 +19,7 @@ wgan = WGAN.PokeWGAN((CROP_DIMS, CROP_DIMS, 3), './OUTPUT/pokeGAN_colorize/', lo
 cache_dir = os.path.join('./cached_datasets/pokeGAN_colorize/', '{}/'.format(wgan.birthday))
 if not os.path.exists(cache_dir):
     os.makedirs(cache_dir)
-combined_ds = img_ds.concatenate(shiny_ds).cache(cache_dir).shuffle(5000).batch(32)
+combined_ds = img_ds.concatenate(shiny_ds).cache(cache_dir).shuffle(5000, reshuffle_each_iteration=True).batch(32)
 
 
 wgan.train(combined_ds, 5000, 0, 1, 10)

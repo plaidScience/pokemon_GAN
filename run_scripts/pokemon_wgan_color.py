@@ -14,6 +14,6 @@ wgan = WGAN.PokeWGAN((100), (48, 48, 3), './OUTPUT/pokeGAN_color/')
 cache_dir = os.path.join('./cached_datasets/pokeGAN_color/', '{}/'.format(wgan.birthday))
 if not os.path.exists(cache_dir):
     os.makedirs(cache_dir)
-combined_ds = img_ds.concatenate(shiny_ds).cache(cache_dir).shuffle(5000).batch(64)
+combined_ds = img_ds.concatenate(shiny_ds).cache(cache_dir).shuffle(5000, reshuffle_each_iteration=True).batch(64)
 
 wgan.train(combined_ds, 10000, 0, 5, 50)

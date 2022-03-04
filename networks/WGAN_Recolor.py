@@ -30,9 +30,9 @@ class PokeWGAN:
         if image_shape[-1] < 3:
             raise(ValueError("Image must have minimum dimensions of 3"))
         elif(image_shape[-1] == 3):
-            self.get_hue_bw = self._get_hue_bw
+            self.get_hue = self._get_hue
         elif(image_shape[-1] == 4):
-            self.get_hue_bw = self._get_hue_bw_alpha
+            self.get_hue = self._get_hue_alpha
         elif image_shape[-1] > 4:
 
             raise(NotImplementedError("Max Dim > 4 Images NYI"))
@@ -50,9 +50,9 @@ class PokeWGAN:
         self.critic = self._build_critic(self.image_shape, max_critic_filters)
         self.critic.summary()
 
-        self.LAMBDA_GP=10
+        self.LAMBDA_GP = 10
         self.LAMBDA_REC = 10
-        self.LAMBDA_HUE = 100
+        self.LAMBDA_HUE = 50
         self.train_g_every = 5
 
         self.gen_loss_keys = ['adv', 'rec', 'hue']
@@ -72,11 +72,16 @@ class PokeWGAN:
         self.checkpoint_manager = tf.train.CheckpointManager(self.checkpoint, os.path.join(self.checkpoint_folder, 'checkpoint'), max_to_keep=5)
         self.n_preds, self.m_preds= log_tiling
         self.seed = tf.random.uniform([self.n_preds*self.m_preds], 0.0, 1.0)
+        self.epoch, self.epochs = 0, 1
 
     def _build_generator(self, image_shape):
-        return GENERATOR(image_shape[:-1], 1+(image_shape[-1]-3), image_shape[-1], self.output_dir, 1)
+        return GENERATOR(image_shape[:-1], image_shape[-1], image_shape[-1], self.output_dir, 1, lr=self._get_lr)
     def _build_critic(self, input_shape, max_filters):
-        return CRITIC(input_shape, self.output_dir, max_filters=max_filters)
+        return CRITIC(input_shape, self.output_dir, max_filters=max_filters, lr=self._get_lr)
+
+    def _get_lr(self):
+        computed = 0.0001-((self.epoch+1)-(self.epochs/2))*(0.0001/(self.epochs/2))
+        return tf.clip_by_value(computed, 0.0, 0.0001)
 
     def gradient_penalty(self, real, fake):
         alpha = tf.random.uniform((real.shape[0], 1, 1, 1), minval=0.0, maxval=1.0)
@@ -94,23 +99,19 @@ class PokeWGAN:
         target = tf.repeat([target], [tf.shape(cls)[0]], axis=0)
         return target
 
-    def _get_hue_bw(self, images):
+    def _get_hue(self, images):
         images = images*0.5+0.5
         avg_hues = img_functions.get_avg_hue(images)
-        bw_imgs = tf.image.rgb_to_grayscale(images)
-        return avg_hues, (bw_imgs*2)-1
+        return avg_hues
     
-    def _get_hue_bw_alpha(self, images):
+    def _get_hue_alpha(self, images):
         images = images*0.5+0.5
         avg_hues = img_functions.get_avg_hue_alpha(images)
-        img, alpha = tf.split(images, [3, 1], axis=-1)
-        bw_imgs = tf.image.rgb_to_grayscale(img)
-        bw_imgs = tf.concat([bw_imgs, alpha], axis=-1)
-        return avg_hues, (bw_imgs*2)-1
+        return avg_hues
 
-    def _train_step_critic(self, images, bw_imgs, target_hues):
+    def _train_step_critic(self, images, target_hues):
         with tf.GradientTape() as critic_tape:
-            generated = self.generator([bw_imgs, target_hues], training=True)
+            generated = self.generator([images, target_hues], training=True)
 
             real_output = self.critic(images, training=True)
             fake_output = self.critic(generated, training=True)
@@ -124,15 +125,15 @@ class PokeWGAN:
 
         return adv_loss, gp
 
-    def _train_step_generator(self, images, avg_hues, bw_imgs, target_hues):
+    def _train_step_generator(self, images, avg_hues, target_hues):
         with tf.GradientTape() as generator_tape:
-            generated = self.generator([bw_imgs, target_hues], training=True)
+            generated = self.generator([images, target_hues], training=True)
             fake_output = self.critic(generated, training=True)
 
-            hue_gen, hue_bw = self.get_hue_bw(generated)
+            hue_gen = self.get_hue(generated)
             hue_err = self.hue_loss(target_hues, hue_gen)*self.LAMBDA_HUE
 
-            rec_img = self.generator([hue_bw, avg_hues], training=True)
+            rec_img = self.generator([generated, avg_hues], training=True)
 
             rec_err = self.rec_loss(images, rec_img)*self.LAMBDA_REC
 
@@ -147,10 +148,10 @@ class PokeWGAN:
 
     def _train_step(self, images, batch):
 
-        avg_hues, bw_imgs = self.get_hue_bw(images)
+        avg_hues  = self.get_hue(images)
         target_hues = self.get_target_label(avg_hues)
-        critic_loss = self._train_step_critic(images, bw_imgs, target_hues)
-        gen_loss = self._train_step_generator(images, avg_hues, bw_imgs, target_hues) if batch%self.train_g_every == 0 else -1
+        critic_loss = self._train_step_critic(images, target_hues)
+        gen_loss = self._train_step_generator(images, avg_hues, target_hues) if batch%self.train_g_every == 0 else [-1 for i in self.gen_loss_keys]
 
         return gen_loss, critic_loss
 
@@ -161,9 +162,10 @@ class PokeWGAN:
         return tf.reduce_mean(tf.abs(tf.subtract(real_img, fake_img)))
 
     def train(self, img_ds, epochs, start_epoch = 0, generate_freq=1, checkpoint_freq=10):
+        self.epochs = epochs
         ds_iter = iter(img_ds)
         log_set = next(ds_iter)
-        log_hues, _ = self.get_hue_bw(log_set)
+        log_hues = self.get_hue(log_set)
         seed_hues = tf.random.shuffle(log_hues)
         if log_set.shape[0] < self.n_preds*self.m_preds:
             raise(ValueError('Batch Size of Set to Log Too Small'))
@@ -181,7 +183,8 @@ class PokeWGAN:
         for i in self.critic_loss_keys:
             critic_losses.append(tf.keras.metrics.Mean('critic_'+i, dtype=tf.float32))
 
-        for epoch in range(start_epoch, epochs):
+        for epoch in range(start_epoch, self.epochs):
+            self.epoch = epoch
             start = time.time()
             localtime = time.localtime(start)
             print('Epoch {:04d} started at {}:{:02d}:{:02d}'
@@ -231,12 +234,13 @@ class PokeWGAN:
 
     
     def generate_and_log_imgs(self, log_set, epoch, seed=None):
-        _, bw_img = self.get_hue_bw(log_set)
         if seed is None:
             seed = self.seed
-        predictions = self.generator([bw_img, seed], training=False)
+        predictions = self.generator([log_set, seed], training=False)
         self._log_imgs(predictions, seed, epoch, f'Prediction', do_err=True)
-    def _log_imgs(self, images, labels, epoch, log_str='', do_err = False):
+    def _log_imgs(self, images, labels, epoch, log_str='', do_err = False, denorm=True):
+        if denorm:
+            images = images*0.5+0.5
         dpi = 100.
         w_pad = 2/72.
         h_pad = 2/72.
@@ -244,11 +248,11 @@ class PokeWGAN:
         plot_height = self.plot_scaling*(self.image_shape[-2]+2*h_pad*self.image_shape[-2])/dpi
         fig, ax = plt.subplots(self.n_preds, self.m_preds, figsize=(plot_width*(self.m_preds+1), plot_height*(self.n_preds+1)), dpi=dpi)
         if do_err:
-            hues, _ = self.get_hue_bw(images)
+            hues = self.get_hue(images)
             error = img_functions.tf_angDist(labels, hues, 1.0)
         for i in range(self.n_preds):
             for j in range(self.m_preds):
-                ax[i, j].imshow((images[i*self.m_preds+j, :, :, :].numpy()*0.5 + 0.5))
+                ax[i, j].imshow((images[i*self.m_preds+j, :, :, :].numpy()))
                 if do_err:
                     ax[i, j].set_title(f'Error: {error[i*self.m_preds+j]:0.3f}')
                 else:
@@ -264,7 +268,7 @@ class PokeWGAN:
         with self.generator.logger.as_default():
             tf.summary.image(
                 "Epoch {} Images".format(log_str),
-                images*0.5+0.5, max_outputs=self.n_preds*self.m_preds, step=epoch
+                images, max_outputs=self.n_preds*self.m_preds, step=epoch
             )
             tf.summary.image(
                 "_Epoch {} Image (concatenated)".format(log_str),
